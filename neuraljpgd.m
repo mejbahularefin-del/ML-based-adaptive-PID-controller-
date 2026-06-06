@@ -1,0 +1,143 @@
+function neuraljpgd
+% neuraljpgd.m
+% Create NN architecture images as JPG files (MATLAB R2018a compatible)
+
+build_nn_image( ...
+    {'e(t)', '\Deltae(t)'}, ...
+    {'kp', 'ki', 'kd'}, ...
+    'nn_2input_128_3output.jpg', ...
+    '2 inputs \rightarrow 128 hidden \rightarrow 3 outputs   (256 + 384 = 640 weighted connections)');
+
+build_nn_image( ...
+    {'Power level', 'e(t)', '\Deltae(t)'}, ...
+    {'kp', 'ki', 'kd'}, ...
+    'nn_3input_128_3output.jpg', ...
+    '3 inputs \rightarrow 128 hidden \rightarrow 3 outputs   (384 + 384 = 768 weighted connections)');
+
+disp('Done. JPG files generated.');
+end
+
+
+% ----------------- helper function -----------------
+function build_nn_image(inputs, outputs, fname, titleStr)
+
+    % layout parameters (same geometry as Python version)
+    W = 820;  H = 1080;
+    in_x  = 130;  hid_x = 410;  out_x = 690;
+    hid_top = 90; hid_bot = 1010;
+    n_hid = 128;
+    hid_r  = 2.8;
+    node_r = 18;
+
+    hid_ys = hid_top + (hid_bot - hid_top) * (0:n_hid-1) / (n_hid-1);
+
+    col_ys = @(n, spacing) ...
+        ((hid_top + hid_bot)/2 - (n-1)*spacing/2) + (0:n-1)*spacing;
+
+    in_ys  = col_ys(numel(inputs), 82);
+    out_ys = col_ys(numel(outputs), 82);
+
+    % create figure
+    fig = figure('Visible','off');
+    set(fig,'Color','w');
+    ax = axes('Parent',fig);
+    hold(ax,'on');
+    axis(ax,[0 W 0 H]);
+    axis(ax,'equal');
+    set(ax,'YDir','reverse');    % SVG-style coordinates (top=0)
+    axis(ax,'off');
+
+    % connections: input -> hidden   (no alpha, just light colors)
+    for iy = in_ys
+        for hy = hid_ys
+            line(ax,[in_x hid_x],[iy hy], ...
+                'Color',[0.75 0.72 0.93], ...   % light purple
+                'LineWidth',0.4);
+        end
+    end
+
+    % connections: hidden -> output
+    for hy = hid_ys
+        for oy = out_ys
+            line(ax,[hid_x out_x],[hy oy], ...
+                'Color',[0.64 0.85 0.78], ...   % light green
+                'LineWidth',0.4);
+        end
+    end
+
+    % hidden neurons
+    for hy = hid_ys
+        rectangle(ax,'Position',[hid_x-hid_r, hy-hid_r, 2*hid_r, 2*hid_r], ...
+            'Curvature',[1 1], ...
+            'FaceColor',[0.93 0.93 0.99], ...
+            'EdgeColor',[0.33 0.29 0.72], ...
+            'LineWidth',0.6);
+    end
+
+    % input nodes + labels
+    for k = 1:numel(inputs)
+        iy = in_ys(k);
+        lab = inputs{k};
+        rectangle(ax,'Position',[in_x-node_r, iy-node_r, 2*node_r, 2*node_r], ...
+            'Curvature',[1 1], ...
+            'FaceColor',[0.90 0.95 0.98], ...
+            'EdgeColor',[0.09 0.37 0.65], ...
+            'LineWidth',1);
+        text(in_x-node_r-10, iy+4, lab, ...
+            'HorizontalAlignment','right', ...
+            'FontSize',15, 'Color',[0.02 0.17 0.33]);
+    end
+
+    % output nodes + labels
+    for k = 1:numel(outputs)
+        oy = out_ys(k);
+        lab = outputs{k};
+        rectangle(ax,'Position',[out_x-node_r, oy-node_r, 2*node_r, 2*node_r], ...
+            'Curvature',[1 1], ...
+            'FaceColor',[0.88 0.96 0.93], ...
+            'EdgeColor',[0.06 0.43 0.34], ...
+            'LineWidth',1);
+        text(out_x, oy+4, lab, ...
+            'HorizontalAlignment','center', ...
+            'FontSize',14, 'Color',[0.02 0.21 0.17]);
+        text(out_x+node_r+10, oy+4, 'output', ...
+            'HorizontalAlignment','left', ...
+            'FontSize',13, 'Color',[0.37 0.37 0.35]);
+    end
+
+    % layer headers
+    text(in_x, 45, 'Input layer', ...
+        'HorizontalAlignment','center', ...
+        'FontSize',17, 'FontWeight','bold', 'Color',[0.10 0.10 0.10]);
+    text(in_x, 65, sprintf('%d nodes', numel(inputs)), ...
+        'HorizontalAlignment','center', ...
+        'FontSize',13, 'Color',[0.37 0.37 0.35]);
+
+    text(hid_x, 45, 'Hidden layer', ...
+        'HorizontalAlignment','center', ...
+        'FontSize',17, 'FontWeight','bold', 'Color',[0.10 0.10 0.10]);
+    text(hid_x, 65, '128 neurons (ReLU), fully connected', ...
+        'HorizontalAlignment','center', ...
+        'FontSize',13, 'Color',[0.37 0.37 0.35]);
+
+    text(out_x, 45, 'Output layer', ...
+        'HorizontalAlignment','center', ...
+        'FontSize',17, 'FontWeight','bold', 'Color',[0.10 0.10 0.10]);
+    text(out_x, 65, sprintf('%d nodes', numel(outputs)), ...
+        'HorizontalAlignment','center', ...
+        'FontSize',13, 'Color',[0.37 0.37 0.35]);
+
+    % bottom caption
+    text(W/2, H-25, titleStr, ...
+        'HorizontalAlignment','center', ...
+        'FontSize',13, 'Color',[0.37 0.37 0.35]);
+
+    % set figure size and save as JPG
+    set(fig,'Units','pixels','Position',[100 100 W H]);
+    set(ax,'Position',[0 0 1 1]);
+
+    % R2018a-compatible saving
+    saveas(fig, fname, 'jpg');    % makes fname as JPEG[web:62][web:90]
+
+    close(fig);
+end
